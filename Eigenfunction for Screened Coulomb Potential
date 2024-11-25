@@ -1,0 +1,54 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.linalg import eigh
+
+# Constants (in units where energy is in eV, length in fm, mass in eV/c^2, etc.)
+h = 1973            # Planck's constant in appropriate units
+m = 0.511e6         # Mass of electron (eV/c^2)
+e = 3.795           # Electron charge in suitable units
+n = 3               # Number of eigenstates to plot
+
+# Given parameters
+a = [3, 5, 7]       # Different screening lengths for Coulomb potential
+N = 1000            # Number of spatial points
+x = np.linspace(1e-2, 10, N)  # Spatial domain (avoid singularity at x = 0)
+d = x[1] - x[0]     # Step size in spatial grid
+
+# Initialize Hamiltonian matrix (A) for the kinetic energy term
+A = np.zeros((N, N))
+for i in range(1, N-1):
+    A[i, i-1] = -1/d**2       # Off-diagonal elements (discretized second derivative)
+    A[i, i] = 2/d**2          # Diagonal elements
+    A[i, i+1] = -1/d**2      # Off-diagonal elements
+
+# Boundary conditions for A (ensuring it's consistent for finite differences)
+A[-1, -1] = A[0, 0] = 2/d**2
+A[-1, -2] = A[0, 1] = -1/d**2
+
+# Multiply the matrix A by a constant for the kinetic energy part of the Hamiltonian
+A = A*h**2 / (2 * m)
+
+# Loop over different values of screening length 'a'
+for k in a:
+    B2 = np.zeros(N)  # Initialize the potential energy vector (B) for the screened Coulomb potential
+    for i in range(N):
+        B2[i] = -(e**2 * np.exp(-x[i]/k) / x[i])  # Screened Coulomb potential
+    
+    # Total Hamiltonian H = Kinetic Energy (A) + Potential Energy (B)
+    H = A + np.diag(B2)
+
+    # Solve the eigenvalue problem for the Hamiltonian H
+    val, vec = eigh(H)
+
+    # Plot the first 'n' eigenfunctions corresponding to the lowest eigenvalues
+    for i in range(n):
+        plt.plot(x, vec[:, i], label=f'Eigenvalue {np.round(val[i], 3)} eV')
+
+    # Plot formatting
+    plt.axhline(color='black')  # Horizontal line at y=0
+    plt.grid()
+    plt.xlabel('x', fontweight='bold')
+    plt.ylabel('$ \psi(x) $', fontweight='bold')
+    plt.legend(fontsize=8, loc='upper right')
+    plt.title(f'Eigenfunction for Screened Coulomb Potential for a = {k}')
+    plt.show()
