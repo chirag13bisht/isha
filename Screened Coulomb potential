@@ -1,44 +1,54 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import scipy.constants as sc
+from scipy.linalg import eigh
 
-m = 0.511e6
-hbar = 1973
-e = 3.795
-a = 1e-2
-b = 10
-n = 1000
-d = (b - a) / (n - 1)
+# Constants (in units where energy is in eV, length in fm, mass in eV/c^2, etc.)
+h = 1973            # Planck's constant in appropriate units
+m = 0.511e6         # Mass of electron (eV/c^2)
+e = 3.795           # Electron charge in suitable units
+n = 3               # Number of eigenstates to plot
 
-x = np.linspace(a, b, n)
-c = 2 * m * d**2 / hbar**2
+# Given parameters
+a = [3, 5, 7]       # Different screening lengths for Coulomb potential
+N = 1000            # Number of spatial points
+x = np.linspace(1e-2, 10, N)  # Spatial domain (avoid singularity at x = 0)
+d = x[1] - x[0]     # Step size in spatial grid
 
-# Potential
-def V(x, a_0):
-    return (-e**2 / x) * np.exp(-x / a_0)
+# Initialize Hamiltonian matrix (A) for the kinetic energy term
+A = np.zeros((N, N))
+for i in range(1, N-1):
+    A[i, i-1] = -1/d**2       # Off-diagonal elements (discretized second derivative)
+    A[i, i] = 2/d**2          # Diagonal elements
+    A[i, i+1] = -1/d**2      # Off-diagonal elements
 
-# Function to define matrix
-def H_m(a_0):
-    Vs = []
-    for i in range(len(x)):
-        Vs.insert(i, V(x[i], a_0))
-    H = np.empty((n, n))
-    for i in range(0, n):
-        H[i][i] = 2 * c + Vs[i]
-        if i > 0:
-            H[i][i - 1] = -1
-        if i < (n - 1):
-            H[i][i + 1] = -1
-    return H
+# Boundary conditions for A (ensuring it's consistent for finite differences)
+A[-1, -1] = A[0, 0] = 2/d**2
+A[-1, -2] = A[0, 1] = -1/d**2
 
-for a_0 in range(3, 8, 2):
-    H = H_m(a_0)
-    Eg_val, Eg_vec = np.linalg.eigh(H)
-    Energy = Eg_val[0] * hbar**2 / 2 / m / d**2
-    print(Energy, "eV")
-    plt.plot(x, Eg_vec.T[0], label=(str(round(Energy, 4)) + "eV"))
+# Multiply the matrix A by a constant for the kinetic energy part of the Hamiltonian
+A = A*h**2 / (2 * m)
 
-plt.legend()
-plt.xlabel("x")
-plt.title("Screened Coulomb potential")
-plt.show()
+# Loop over different values of screening length 'a'
+for k in a:
+    B2 = np.zeros(N)  # Initialize the potential energy vector (B) for the screened Coulomb potential
+    for i in range(N):
+        B2[i] = -(e**2 * np.exp(-x[i]/k) / x[i])  # Screened Coulomb potential
+    
+    # Total Hamiltonian H = Kinetic Energy (A) + Potential Energy (B)
+    H = A + np.diag(B2)
+
+    # Solve the eigenvalue problem for the Hamiltonian H
+    val, vec = eigh(H)
+
+    # Plot the first 'n' eigenfunctions corresponding to the lowest eigenvalues
+    for i in range(n):
+        plt.plot(x, vec[:, i], label=f'Eigenvalue {np.round(val[i], 3)} eV')
+
+    # Plot formatting
+    plt.axhline(color='black')  # Horizontal line at y=0
+    plt.grid()
+    plt.xlabel('x', fontweight='bold')
+    plt.ylabel('$ \psi(x) $', fontweight='bold')
+    plt.legend(fontsize=8, loc='upper right')
+    plt.title(f'Eigenfunction for Screened Coulomb Potential for a = {k}')
+    plt.show()
