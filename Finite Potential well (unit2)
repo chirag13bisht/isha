@@ -1,97 +1,89 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.linalg import eigh
-from tabulate import tabulate  # For displaying data in a table format
+from tabulate import tabulate  # For displaying data in table format
 
-# Constants (in SI units)
-h = 1.05e-34        # Planck's constant (J·s)
-m = 9.1e-31         # Mass of electron (kg)
-n = 4               # Number of eigenstates to plot
+# Constants and parameters
+h = 1.05e-34                         # Planck's constant
+m = 9.1e-31                          # Mass of electron
+n = 4                                 # Number of energy states
+V = 14 * 1.6e-19                     # Potential energy (14 eV)
+L = 2e-10                            # Well width
+N = 2000                             # Number of points for x
+x = np.linspace(-L-3e-10, L+3e-10, N)# x range
+d = x[1] - x[0]                      # Step size
 
-# Given parameters
-L = 1.5e-9          # Size of the system (length of the potential well, in meters)
-N = 1000            # Number of spatial points for discretization
-k = 1               # Force constant for harmonic potential (N/m)
-x = np.linspace(-L, L, N)  # Spatial domain from -L to L
-d = x[1] - x[0]     # Step size in spatial grid
-
-# Initialize the Hamiltonian matrix (A) for the kinetic energy term
-A = np.zeros((N, N))
+# Construct Hamiltonian matrix for kinetic energy
+A = np.zeros((N,N))
 for i in range(1, N-1):
-    A[i, i-1] = -1/d**2      # Off-diagonal elements (discretized second derivative)
-    A[i, i] = 2/d**2         # Diagonal elements
-    A[i, i+1] = -1/d**2      # Off-diagonal elements
+    A[i,i-1] = A[i,i+1] = -1/d**2
+    A[i,i] = 2/d**2
+A[-1,-1] = A[0,0] = 2/d**2           # Boundary conditions
+A[-1,-2] = A[0,1] = -1/d**2
 
-# Boundary conditions for A (consistent for finite differences)
-A[-1, -1] = A[0, 0] = 2/d**2
-A[-1, -2] = A[0, 1] = -1/d**2
-
-# Initialize the potential energy vector (B) for the harmonic oscillator potential
+# Add potential energy term
 B = np.zeros(N)
 for i in range(N):
-    if abs(x[i]) <= L:
-        B[i] = 0.5 * k * (x[i])**2  # Harmonic potential: V(x) = 0.5 * k * x^2
-    else:
-        pass  # Outside the potential well, potential remains zero
+    if abs(x[i]) <= L:               # Inside the potential well
+        B[i] = -2 * m * V / h**2
 
-# Multiply the matrix A by constants to represent the kinetic energy term
-A = A * h**2 / (2 * m)
+H = A + np.diag(B)                   # Total Hamiltonian
 
-# Construct the total Hamiltonian H = A + B, where B is the diagonal potential term
-H = A + np.diag(B)
-
-# Solve the eigenvalue problem for the Hamiltonian H
+# Solve for eigenvalues and eigenfunctions
 val, vec = eigh(H)
+val = val * h**2 / (2*m)             # Convert eigenvalues to energy units
 
-# Plot the first 'n' eigenfunctions corresponding to the lowest eigenvalues
-plt.figure(figsize=(10, 6))  # Set figure size to 10x6 inches
+# Set the figure size for eigenfunctions plot
+plt.figure(figsize=(10, 6))
+
+# Plot the eigenfunctions
 for i in range(n):
-    plt.plot(x, vec[:, i], label=f'State {i+1}: Eigenvalue {np.round((val[i] / 1.6e-19), 3)} eV')  # State and eigenvalue in eV
+    plt.plot(x, vec[:,i], label=f'State {i+1}: Eigenvalue {np.round(val[i]/1.6e-19, 3)} eV')
+
+# Plot the potential well boundaries
+plt.axvline(L, linestyle='dotted', color='black')
+plt.axvline(-L, linestyle='dotted', color='black')
 
 # Plot formatting
+plt.title('Eigenfunctions for Finite Potential Well')
 plt.axhline(color='black')  # Horizontal line at y=0
-plt.xlabel('x', fontweight='bold')
-plt.ylabel('$ \psi(x)$', fontweight='bold')
-plt.title('Eigenfunctions for Harmonic Potential')
+plt.xlabel('x (meters)', fontweight='bold')
+plt.ylabel('$\psi(x)$', fontweight='bold')
 plt.grid()
 plt.legend(fontsize=8, loc='upper left')
 plt.show()
 
-# Function for the harmonic potential (for plotting potential shape)
-def V(y):
-    return 0.5 * k * (y)**2
+# Set the figure size for probability densities plot
+plt.figure(figsize=(10, 6))
 
-# Plot the probability densities (|ψ(x)|^2) of the first 'n' eigenstates
-plt.figure(figsize=(10, 6))  # Set figure size to 10x6 inches
-x1 = np.linspace(-1, 1, 50)  # For potential plot
-a = 0  # Offset to separate plots of different eigenstates
-
+# Plot the probability densities (|ψ(x)|^2)
 for i in range(n):
-    plt.plot(x * 1e9, vec[:, i]**2 + a, label=f'State {i+1}: Eigenvalue {np.round((val[i] / 1.6e-19), 3)} eV')  # State number and eigenvalue in eV
-    a += max(vec[:, 0]**2) + 0.002  # Adjust vertical spacing for readability
+    plt.plot(x, vec[:, i]**2, label=f'Probability Density State {i+1}')
 
-# Plot the harmonic potential on the same graph
-plt.plot(x1, 0.05 * V(x1))  # Scaled potential for visualization
-plt.axhline(color='black')
+# Plot the potential well boundaries
+plt.axvline(L, linestyle='dotted', color='black')
+plt.axvline(-L, linestyle='dotted', color='black')
 
 # Plot formatting
-plt.xlabel('x (nm)', fontweight='bold')
-plt.ylabel('$ |\psi(x)|^2$', fontweight='bold')
-plt.title('Probability Densities $|\psi(x)|^2$ of the Harmonic Oscillator')
+plt.title('Probability Densities $|\psi(x)|^2$ for Finite Potential Well')
+plt.axhline(color='black')  # Horizontal line at y=0
+plt.xlabel('x (meters)', fontweight='bold')
+plt.ylabel('$|\psi(x)|^2$', fontweight='bold')
 plt.grid()
-plt.legend(fontsize=8, loc='lower left')
+plt.legend(fontsize=8, loc='upper left')
 plt.show()
 
-# Calculate theoretical and calculated eigenvalues and compare
-omega = np.sqrt(k / m)  # Angular frequency for harmonic oscillator
-data = []
+# Calculate theoretical eigenvalues for particle in a box
+theoretical_vals = [(i + 1)**2 * (np.pi)**2 * h**2 / (8 * m * L**2) for i in range(n)]
 
-# Create a table comparing theoretical and calculated eigenvalues
+# Convert them to eV
+theoretical_vals_eV = [val / 1.6e-19 for val in theoretical_vals]
+
+# Prepare data for comparison table
+data = []
 for i in range(n):
-    E = (i + 0.5) * h * omega  # Theoretical energy: (n + 1/2)ħω
-    E = E / 1.6e-19  # Convert energy from J to eV
-    E_cal = val[i] / 1.6e-19  # Calculated eigenvalue (in eV)
-    data.append([f'State {i+1}', E, E_cal, abs(E - E_cal)])  # State number, theoretical, calculated, difference
+    data.append([i + 1, np.round(theoretical_vals_eV[i], 3), np.round(val[i]/1.6e-19, 3), 
+                 np.round(abs(theoretical_vals_eV[i] - val[i]/1.6e-19), 3)])
 
 # Print the comparison table
 head = ['State', 'Theoretical Eigenvalue (eV)', 'Calculated Eigenvalue (eV)', 'Difference (eV)']
