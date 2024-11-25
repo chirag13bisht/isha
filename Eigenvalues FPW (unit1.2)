@@ -1,0 +1,142 @@
+#Simran Panwar
+#8981 (C+D Group)
+#Unit 1(b): Finite potential
+import numpy as np; import matplotlib.pyplot as plt
+from scipy.optimize import fsolve
+from prettytable import PrettyTable
+from scipy.integrate import quad
+
+
+#Given Parameters
+h=1973; m=0.511e6;
+V0=14
+a=2
+gamma=(2*m*V0*a**2/h**2)**0.5 #Potential strength parameter
+
+table1=PrettyTable(['index','zeta','E Eigen values(eV)'])
+
+def equation_odd(x):
+    return (1/np.tan(x))+np.sqrt((gamma/x)**2-1)
+def equation_even(x):
+    return np.tan(x)-np.sqrt((gamma/x)**2-1)
+
+zeta=[]
+
+def bisection(f,a,b,tol):
+    while True:
+        if f(a)==0:
+            print(a," is the root");break
+        elif f(b)==0:
+            print(b," is the root");break
+        else:
+            c=(a+b)/2
+            if f(c)*f(a)<0:
+                b=c
+            else:
+                a=c
+
+            t=abs(b-a)
+            if t<tol:
+                break
+    return c
+
+sol_max=np.sqrt(2*m*V0)*a/h
+tol=1e-5
+
+roots_even=[]
+roots_odd=[]
+
+for a1 in range(1,5*int(sol_max+1)):
+    for b1 in range(1,5*int(sol_max+1)):
+
+        if equation_even(0.2*a1)*equation_even(0.2*b1)<0 and a1!=b1:
+            roots_even.append(round(bisection(equation_even,0.2*a1,0.2*b1,tol),3))
+
+        if equation_odd(0.2*a1)*equation_odd(0.2*b1)<0 and a1!=b1:
+            roots_odd.append(round(bisection(equation_odd,0.2*a1,0.2*b1,tol),3))
+
+roots1=set(roots_even)
+roots1=list(roots1)
+
+for i in roots1:
+    if i%round(np.pi/2,3)==0:
+        roots1.remove(i)
+
+roots2=set(roots_odd)
+roots2=list(roots2)
+
+for i in roots2:
+    if i%round(np.pi/2,3)==0:
+        roots2.remove(i)
+
+En_even=[V0-((h*x/a)**2)/(2*m) for x in roots1]
+En_odd=[V0-((h*x/a)**2)/(2*m) for x in roots2]
+
+t=4#For Box Normalisation (-t-a to t+a)
+
+
+x1=np.linspace(-t-a,-a,250)
+x2=np.linspace(-a,a,500);  x3=np.linspace(a,t+a,250)
+k1=[];K1=[];
+B1=[];C1=[]
+color=['red','hotpink','black']
+
+
+c=0
+Integral=[]
+marker=['b_','g|','m--']
+for i in range(len(En_even)):
+    k=(2*m*En_even[i]/h**2)**0.5
+    K=(2*m*(V0-En_even[i])/h**2)**0.5
+    k1.append(k);K1.append(K)
+    B=np.sqrt(k/(1+k*a));  C=B*np.cos(K*a)*np.exp(k*a)
+    B1.append(B)
+    C1.append(C)
+    plt.plot(x1,C*np.exp(k*x1),marker[c],markersize=8)
+    plt.plot(x2,B*np.cos(K*x2),marker[c],markersize=8,label=f'E{c+1}= {round(En_even[i],3)} eV')
+    plt.plot(x3,C*np.exp(-k*x3),marker[c],markersize=8)
+
+    f1=lambda x: (C*np.exp(k*x))**2
+    f2=lambda x: (B*np.cos(K*x))**2
+    f3=lambda x: (C*np.exp(-k*x))**2
+
+    I1,_=quad(f1,-np.inf,-a)
+    I2,_=quad(f2,-a,a)
+    I3,_=quad(f3,a,np.inf)
+    Integral.append(I1+I2+I3)
+    c+=1
+    table1.add_row([c,round(roots1[i],2),round(En_even[i],3)])#,round(Integral[c-1],4)])
+
+for i in range(len(En_odd)):
+    k=(2*m*En_odd[i]/h**2)**0.5
+    K=(2*m*(V0-En_odd[i])/h**2)**0.5
+    k1.append(k)
+    K1.append(K)
+    B=np.sqrt(k/(1+k*a))
+    C=-np.sqrt(k/(1+k*a))*np.sin(K*a)*np.exp(k*a)
+    B1.append(B)
+    C1.append(C)
+    plt.plot(x1,C*np.exp(k*x1),marker[c],markersize=5,linewidth=2)
+    plt.plot(x2,B*np.sin(K*x2),marker[c],markersize=5,linewidth=2,label=f'E{c+1}= {round(En_odd[i],3)} eV')
+    plt.plot(x3,-C*np.exp(-k*x3),marker[c],markersize=5,linewidth=2)
+    f1=lambda x: (C*np.exp(k*x))**2
+    f2=lambda x: (B*np.sin(K*x))**2
+    f3=lambda x: (-C*np.exp(-k*x))**2
+
+    I1,_=quad(f1,-t-a,-a)
+    I2,_=quad(f2,-a,a)
+    I3,_=quad(f3,a,t+a)
+    Integral.append(I1+I2+I3)
+    c+=1
+    table1.add_row([c,round(roots2[i],2),round(En_odd[i],3)])#,round(Integral[c-1],4)])
+
+
+plt.legend(); plt.grid()
+plt.axhline(y=0,xmin=-a,xmax=a)
+plt.axvline(x=-a,ymin=0,ymax=V0)
+plt.axvline(x=a,ymin=0,ymax=V0)
+plt.title(f'Finite potential well V0={V0} eV')
+plt.xlabel('x');plt.ylabel('Psi(x)')
+plt.show()
+
+print(table1)
