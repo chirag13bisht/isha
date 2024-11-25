@@ -1,43 +1,90 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.constants import hbar, electron_mass, e
+from scipy.linalg import eigh
+from tabulate import tabulate  # For displaying data in table format
 
-# Parameters
-a = 4e-10  # Width of the well in meters (4 Ångström)
-V0 = 14 * e  # Potential depth in joules (14 eV)
-m = electron_mass  # Mass of electron in kg
+# Constants and parameters
+h = 1.05e-34                         # Planck's constant
+m = 9.1e-31                          # Mass of electron
+n = 4                                 # Number of energy states
+V = 14 * 1.6e-19                     # Potential energy (14 eV)
+L = 2e-10                            # Well width
+N = 2000                             # Number of points for x
+x = np.linspace(-L-3e-10, L+3e-10, N)# x range
+d = x[1] - x[0]                      # Step size
 
-# Functions for even and odd solutions
-def lhs_even(k, a):
-    return k * np.tan(k * a / 2)
+# Construct Hamiltonian matrix for kinetic energy
+A = np.zeros((N,N))
+for i in range(1, N-1):
+    A[i,i-1] = A[i,i+1] = -1/d**2
+    A[i,i] = 2/d**2
+A[-1,-1] = A[0,0] = 2/d**2           # Boundary conditions
+A[-1,-2] = A[0,1] = -1/d**2
 
-def rhs(k, a, V0):
-    return np.sqrt(2 * m * V0 / hbar**2 - k**2)
+# Add potential energy term
+B = np.zeros(N)
+for i in range(N):
+    if abs(x[i]) <= L:               # Inside the potential well
+        B[i] = -2 * m * V / h**2
 
-def lhs_odd(k, a):
-    return k / np.tan(k * a / 2)
+H = A + np.diag(B)                   # Total Hamiltonian
 
-# Define a range of k values to explore
-k_values = np.linspace(0, np.sqrt(2 * m * V0 / hbar**2), 1000)
+# Solve for eigenvalues and eigenfunctions
+val, vec = eigh(H)
+val = val * h**2 / (2*m)             # Convert eigenvalues to energy units
 
-# Plotting the LHS and RHS for even solutions
-plt.figure(figsize=(12, 8))
+# Set the figure size for eigenfunctions plot
+plt.figure(figsize=(10, 6))
 
-plt.plot(k_values, lhs_even(k_values, a), label=r'$k \tan\left(\frac{ka}{2}\right)$ (Even)', color='blue')
-plt.plot(k_values, rhs(k_values, a, V0), label=r'$\sqrt{\frac{2mV_0}{\hbar^2} - k^2}$', color='red')
+# Plot the eigenfunctions
+for i in range(n):
+    plt.plot(x, vec[:,i], label=f'State {i+1}: Eigenvalue {np.round(val[i]/1.6e-19, 3)} eV')
 
-# Plotting the LHS and RHS for odd solutions
-plt.plot(k_values, lhs_odd(k_values, a), label=r'$\frac{k}{\tan\left(\frac{ka}{2}\right)}$ (Odd)', color='green')
+# Plot the potential well boundaries
+plt.axvline(L, linestyle='dotted', color='black')
+plt.axvline(-L, linestyle='dotted', color='black')
 
-# Mark potential intersections (which represent bound states)
-plt.axhline(0, color='black', linestyle='--')
-
-# Formatting the plot
-plt.title('Graphical Solution for Energy Eigenvalues of an Electron in a Finite Potential Well')
-plt.xlabel('k (m^-1)')
-plt.ylabel('Value')
-plt.legend()
-plt.grid(True)
-
-# Display the plot
+# Plot formatting
+plt.title('Eigenfunctions for Finite Potential Well')
+plt.axhline(color='black')  # Horizontal line at y=0
+plt.xlabel('x (meters)', fontweight='bold')
+plt.ylabel('$\psi(x)$', fontweight='bold')
+plt.grid()
+plt.legend(fontsize=8, loc='upper left')
 plt.show()
+
+# Set the figure size for probability densities plot
+plt.figure(figsize=(10, 6))
+
+# Plot the probability densities (|ψ(x)|^2)
+for i in range(n):
+    plt.plot(x, vec[:, i]**2, label=f'Probability Density State {i+1}')
+
+# Plot the potential well boundaries
+plt.axvline(L, linestyle='dotted', color='black')
+plt.axvline(-L, linestyle='dotted', color='black')
+
+# Plot formatting
+plt.title('Probability Densities $|\psi(x)|^2$ for Finite Potential Well')
+plt.axhline(color='black')  # Horizontal line at y=0
+plt.xlabel('x (meters)', fontweight='bold')
+plt.ylabel('$|\psi(x)|^2$', fontweight='bold')
+plt.grid()
+plt.legend(fontsize=8, loc='upper left')
+plt.show()
+
+# Calculate theoretical eigenvalues for particle in a box
+theoretical_vals = [(i + 1)**2 * (np.pi)**2 * h**2 / (8 * m * L**2) for i in range(n)]
+
+# Convert them to eV
+theoretical_vals_eV = [val / 1.6e-19 for val in theoretical_vals]
+
+# Prepare data for comparison table
+data = []
+for i in range(n):
+    data.append([i + 1, np.round(theoretical_vals_eV[i], 3), np.round(val[i]/1.6e-19, 3), 
+                 np.round(abs(theoretical_vals_eV[i] - val[i]/1.6e-19), 3)])
+
+# Print the comparison table
+head = ['State', 'Theoretical Eigenvalue (eV)', 'Calculated Eigenvalue (eV)', 'Difference (eV)']
+print(tabulate(data, headers=head, tablefmt="grid"))
