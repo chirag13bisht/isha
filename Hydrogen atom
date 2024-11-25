@@ -1,0 +1,55 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.linalg import eigh
+# Constants (in appropriate units)
+h = 1973       # Planck's constant in suitable units (eV*fm)              
+m = 0.511e6    # Mass of electron (eV/c^2)
+e = 3.795      # Electron charge in suitable units
+n = 3          # Number of eigenstates to plot
+
+# Given parameters
+a = [3, 5, 7]    
+N = 1000       # Number of spatial grid points for solving the equation
+k = 1          # Placeholder (not used in this code)
+x = np.linspace (1e-2,10, N)       # Spatial domain (avoid singularity at x = 0)
+d = x[1] - x[0]                    # Step size in spatial grid
+
+# Initialize the Hamiltonian matrix (A) for the kinetic energy term
+A = np.zeros((N, N))
+for i in range(1, N-1):
+    A[i, i-1] = -1/d**2    # Off-diagonal elements (discretized second derivative)
+    A[i, i] =2/d**2         # Diagonal elements
+    A[i, i+1] = -1/d**2    # Off-diagonal elements
+
+# Boundary conditions for A (ensuring it's consistent for finite differences)
+A[-1, -1] =A[0, 0] = 2/d**2
+A[-1, -2] =A[0, 1] = -1/d**2
+
+# Initialize potential energy vector (B) for the Coulomb potential (Hydrogen atom)
+B1 = np.zeros(N)
+for i in range(N):
+    B1[i] = -e**2/ x[i]  # Coulomb potential (-e^2 / r)
+
+# Multiply the matrix A by a constant to represent the kinetic energy term
+A = A* h**2 / (2 * m)
+
+# Construct the full Hamiltonian (H = A + B, where B is the diagonal potential term)
+H=A+np.diag(B1)
+
+# Solve the eigenvalue problem for the Hamiltonian H
+val, vec = eigh(H)
+
+# Plot the first 'n' eigenfunctions corresponding to the lowest eigenvalues
+for i in range(n):
+    plt.plot(x, vec[:, i], label=f'Eigenvalue {np.round(val[i], 3)} ev')
+# Plot formatting
+plt.axhline(color='black') # Horizontal line at y=0
+plt.title('Eigenfunctions for Hydrogen atom or a=1')
+plt.xlabel('x', fontweight='bold')
+plt.ylabel('$ \psi(x)$', fontweight='bold')
+plt.grid()
+plt.legend (fontsize=8, loc='upper right')
+plt.savefig('Hydrogen_states',dpi = 300)
+plt.show()
+
+
