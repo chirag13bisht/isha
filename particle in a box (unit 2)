@@ -1,0 +1,79 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.linalg import eigh
+from tabulate import tabulate  # For displaying data in table format
+
+# Constants (in SI units)
+h = 1.05e-34        # Planck's constant (J·s)
+m = 9.1e-31         # Mass of electron (kg)
+n = 3               # Number of eigenstates to plot
+
+# Given parameters
+V = 14 * 1.6e-19    # Potential depth (Joules)
+L = 2e-10           # Length of the potential box (meters)
+N = 2000            # Number of spatial points for discretization
+x = np.linspace(-L, L, N)  # Spatial domain from -L to L
+d = x[1] - x[0]     # Step size in spatial grid
+
+# Initialize the Hamiltonian matrix (A) for the kinetic energy term
+A = np.zeros((N, N))
+for i in range(1, N-1):
+    A[i, i-1] = -1/d**2      # Off-diagonal elements (discretized second derivative)
+    A[i, i] = 2/d**2         # Diagonal elements
+    A[i, i+1] = -1/d**2      # Off-diagonal elements
+
+# Boundary conditions for A (consistent for finite differences)
+A[-1, -1] = A[0, 0] = 2/d**2
+A[-1, -2] = A[0, 1] = -1/d**2
+
+# Solve the eigenvalue problem for the kinetic energy matrix A
+val, vec = eigh(A)
+
+# Convert eigenvalues to physical units (Joules) using the relation for the kinetic term
+val = val * h**2 / (2 * m)
+
+# Plot the first 'n' eigenfunctions corresponding to the lowest eigenvalues
+plt.figure(figsize=(10, 6))  # Set figure size
+for i in range(n):
+    plt.plot(x, vec[:, i], label=f'State {i+1}: {np.round((val[i] / 1.6e-19), 3)} eV')  # State and eigenvalue in eV
+
+# Plot formatting for eigenfunctions
+plt.axvline(L, linestyle='dotted', color='black')   # Vertical lines indicating the box boundaries
+plt.axvline(-L, linestyle='dotted', color='black')
+plt.axhline(color='black')  # Horizontal line at y=0
+plt.title('Eigenfunctions for Particle in a Box')
+plt.xlabel('x', fontweight='bold')
+plt.ylabel('$ \psi(x)$', fontweight='bold')
+plt.grid()
+plt.legend()
+plt.show()
+
+# Plot the probability density |ψ(x)|^2 of the first 'n' eigenstates
+plt.figure(figsize=(10, 6))  # Set figure size for the probability density plot
+for i in range(n):
+    plt.plot(x, vec[:, i]**2, label=f'State {i+1}: {np.round((val[i] / 1.6e-19), 3)} eV')  # Probability density plot
+
+# Plot formatting for probability density
+plt.axvline(L, linestyle='dotted', color='black')   # Vertical lines indicating the box boundaries
+plt.axvline(-L, linestyle='dotted', color='black')
+plt.axhline(color='black')  # Horizontal line at y=0
+plt.title('Probability Densities $|\psi(x)|^2$ for Particle in a Box')
+plt.xlabel('x', fontweight='bold')
+plt.ylabel('$|\psi(x)|^2$', fontweight='bold')
+plt.grid()
+plt.legend()
+plt.show()
+
+# Data comparison between theoretical and calculated eigenvalues
+data = []
+
+for i in range(n):
+    # Theoretical eigenvalue for particle in a box: E = n^2 * pi^2 * h^2 / (8 * m * L^2)
+    E = (i + 1)**2 * (np.pi)**2 * h**2 / (8 * m * L**2)
+    E = E / 1.6e-19  # Convert energy from J to eV
+    E_cal = val[i] / 1.6e-19  # Calculated eigenvalue (in eV)
+    data.append([i + 1, E, E_cal, abs(E - E_cal)])  # State number, theoretical, calculated, difference
+
+# Print the comparison table
+head = ['State', 'Theoretical Eigenvalue (eV)', 'Calculated Eigenvalue (eV)', 'Difference (eV)']
+print(tabulate(data, headers=head, tablefmt="grid"))
