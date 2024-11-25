@@ -1,0 +1,43 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.constants import hbar, electron_mass, e
+
+# Parameters
+a = 4e-10  # Width of the well in meters (4 Ångström)
+V0 = 14 * e  # Potential depth in joules (14 eV)
+m = electron_mass  # Mass of electron in kg
+
+# Functions for even and odd solutions
+def lhs_even(k, a):
+    return k * np.tan(k * a / 2)
+
+def rhs(k, a, V0):
+    return np.sqrt(2 * m * V0 / hbar**2 - k**2)
+
+def lhs_odd(k, a):
+    return k / np.tan(k * a / 2)
+
+# Define a range of k values to explore
+k_values = np.linspace(0, np.sqrt(2 * m * V0 / hbar**2), 1000)
+
+# Plotting the LHS and RHS for even solutions
+plt.figure(figsize=(12, 8))
+
+plt.plot(k_values, lhs_even(k_values, a), label=r'$k \tan\left(\frac{ka}{2}\right)$ (Even)', color='blue')
+plt.plot(k_values, rhs(k_values, a, V0), label=r'$\sqrt{\frac{2mV_0}{\hbar^2} - k^2}$', color='red')
+
+# Plotting the LHS and RHS for odd solutions
+plt.plot(k_values, lhs_odd(k_values, a), label=r'$\frac{k}{\tan\left(\frac{ka}{2}\right)}$ (Odd)', color='green')
+
+# Mark potential intersections (which represent bound states)
+plt.axhline(0, color='black', linestyle='--')
+
+# Formatting the plot
+plt.title('Graphical Solution for Energy Eigenvalues of an Electron in a Finite Potential Well')
+plt.xlabel('k (m^-1)')
+plt.ylabel('Value')
+plt.legend()
+plt.grid(True)
+
+# Display the plot
+plt.show()
