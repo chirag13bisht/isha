@@ -1,0 +1,54 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.special import sph_harm
+
+def plot_spherical_harmonic(ax, l, m, title):
+    # Define the theta and phi arrays (angles in radians)
+    theta = np.linspace(0, np.pi, 100)
+    phi = np.linspace(0, 2 * np.pi, 100)
+    
+    theta, phi = np.meshgrid(theta, phi)
+    
+    # Compute the spherical harmonic
+    Y_lm = sph_harm(m, l, phi, theta)
+    
+    # Probability density is the square of the absolute value of the spherical harmonic
+    prob_density = np.abs(Y_lm) ** 2
+    
+    # Convert spherical coordinates to Cartesian coordinates for plotting
+    x = np.sin(theta) * np.cos(phi) * prob_density
+    y = np.sin(theta) * np.sin(phi) * prob_density
+    z = np.cos(theta) * prob_density
+    
+    # Normalize colors
+    norm = plt.Normalize(prob_density.min(), prob_density.max())
+    colors = plt.cm.viridis(norm(prob_density))
+    
+    # Plot the surface
+    ax.plot_surface(x, y, z, facecolors=colors, rstride=1, cstride=1, antialiased=True)
+    
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+    ax.set_title(title, fontsize=12, fontweight='bold')
+    ax.axis('off') 
+
+# Create subplots for all l = 0, 1, 2 and their respective m values
+fig = plt.figure(figsize=(15, 10))
+
+# l = 0 (s orbital)
+ax = fig.add_subplot(3, 3, 1, projection='3d')
+plot_spherical_harmonic(ax, l=0, m=0, title="S Orbital (l=0, m=0)")
+
+# l = 1 (p orbitals)
+for i, m in enumerate([-1, 0, 1], start=2):
+    ax = fig.add_subplot(3, 3, i, projection='3d')
+    plot_spherical_harmonic(ax, l=1, m=m, title=f"P Orbital (l=1, m={m})")
+
+# l = 2 (d orbitals)
+for i, m in enumerate([-2, -1, 0, 1, 2], start=5):
+    ax = fig.add_subplot(3, 3, i, projection='3d')
+    plot_spherical_harmonic(ax, l=2, m=m, title=f"D Orbital (l=2, m={m})")
+
+plt.tight_layout()
+plt.show()
